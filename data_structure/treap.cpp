@@ -1,197 +1,162 @@
 /**
  * Treap
  *
- * Problems: SPOJ/ORDERSET
+ * Problems: SPOJ/ORDERSET, CODECHEF/FURGRAPH
  */
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <ctime>
 #include <algorithm>
 using namespace std;
 
-#define INF 0x3f3f3f3f
+#define MAX 200005
 
-struct TreapNode {
-    int key, pri, cnt;
-    TreapNode *left, *right, *parent;
+struct Node {
+    int x, p, cnt;
+    Node *l, *r;
 
-    TreapNode(int key = 0, int pri = 0)
-        : key(key), pri(pri), cnt(1), left(NULL), right(NULL), parent(NULL) {
-    }
+    Node() {}
+    Node(int x, int p, Node *l, Node *r) : x(x), p(p), l(l), r(r) {}
 };
 
-struct Treap {
-    TreapNode *root;
+int next_id;
+Node data[MAX];
+Node *tree, *null;
 
-    Treap() : root(NULL) {}
+void init() {
+    data[0].cnt = 0;
+    null = &data[0];
+    tree = null;
+    next_id = 1;
+}
 
-    void rot_right(TreapNode *u) {
-        TreapNode *w = u->left, *p = u->parent;
-        w->parent = p;
-        if (p != NULL) {
-            if (p->left == u) p->left = w;
-            else p->right = w;
-        }
-        u->left = w->right;
-        if (u->left)
-            u->left->parent = u;
-        u->parent = w;
-        w->right = u;
-        if (root == u)
-            root = w;
-        u->cnt = 1;
-        if (u->left) u->cnt += u->left->cnt;
-        if (u->right) u->cnt += u->right->cnt;
-        w->cnt = 1;
-        if (w->left) w->cnt += w->left->cnt;
-        if (w->right) w->cnt += w->right->cnt;
+Node* new_node(int k) {
+    data[next_id] = Node(k, rand(), null, null);
+    data[next_id].cnt = 1;
+    return &data[next_id++];
+}
+
+void refresh(Node *t) {
+    if (t != null) {
+        t->cnt = t->l->cnt + t->r->cnt + 1;
     }
+}
 
-    void rot_left(TreapNode *u) {
-        TreapNode *w = u->right, *p = u->parent;
-        w->parent = p;
-        if (p != NULL) {
-            if (p->left == u) p->left = w;
-            else p->right = w;
-        }
-        u->right = w->left;
-        if (u->right)
-            u->right->parent = u;
-        u->parent = w;
-        w->left = u;
-        if (root == u)
-            root = w;
-        u->cnt = 1;
-        if (u->left) u->cnt += u->left->cnt;
-        if (u->right) u->cnt += u->right->cnt;
-        w->cnt = 1;
-        if (w->left) w->cnt += w->left->cnt;
-        if (w->right) w->cnt += w->right->cnt;
+// split treap 't' into treaps 'a' and 'b' such that
+// 'a' contains all nodes with x < k
+void split(Node* &t, int k, Node* &a, Node* &b) {
+    if (t == null) {
+        a = b = null;
     }
-
-    void insert(int key) {
-        TreapNode *u = new TreapNode(key, random());
-
-        TreapNode *cur = root, *prev = NULL;
-        while (cur && cur->key != key) {
-            prev = cur;
-            if (key < cur->key)
-                cur = cur->left;
-            else
-                cur = cur->right;
-        }
-        if (cur) return;
-
-        u->parent = prev;
-        if (prev) {
-            if (key < prev->key)
-                prev->left = u;
-            else
-                prev->right = u;
-            while (prev) {
-                prev->cnt++;
-                prev = prev->parent;
-            }
-        }
-        else {
-            root = u;
-        }
-
-        while (u->parent && u->parent->pri > u->pri) {
-            if (u->parent->left == u)
-                rot_right(u->parent);
-            else
-                rot_left(u->parent);
-        }
+    else if (t->x < k) {
+        Node *aux;
+        split(t->r, k, aux, b);
+        t->r = aux;
+        refresh(t);
+        a = t;
     }
-
-    void remove(int key) {
-        TreapNode *u = root;
-        while (u && u->key != key) {
-            if (key < u->key)
-                u = u->left;
-            else
-                u = u->right;
-        }
-        if (!u) return;
-
-        while (u->left || u->right) {
-            if (!u->left)
-                rot_left(u);
-            else if (!u->right)
-                rot_right(u);
-            else if (u->left->pri < u->right->pri)
-                rot_right(u);
-            else
-                rot_left(u);
-        }
-
-        if (u->parent) {
-            if (u->parent->left == u) u->parent->left = NULL;
-            else u->parent->right = NULL;
-            for (TreapNode *cur = u->parent; cur; cur = cur->parent)
-                cur->cnt--;
-        }
-        else {
-            root = NULL;
-        }
-        delete u;
+    else {
+        Node *aux;
+        split(t->l, k, a, aux);
+        t->l = aux;
+        refresh(t);
+        b = t;
     }
+}
 
-    int count_lt(int val) {
-        int ret = 0;
-        TreapNode *cur = root;
-        while (cur) {
-            if (cur->key == val) {
-                if (cur->left)
-                    ret += cur->left->cnt;
-                break;
-            }
-            if (cur->key < val) {
-                if (cur->left)
-                    ret += cur->left->cnt;
-                ret++;
-                cur = cur->right;
-            }
-            else {
-                cur = cur->left;
-            }
-        }
-        return ret;
+// merge treaps 'a' and 'b'
+// keys of 'a' are smaller than keys of 'b'
+Node* merge(Node* &a, Node* &b) {
+    if (a == null)
+        return b;
+    if (b == null)
+        return a;
+    if (a->p < b->p) {
+        Node* aux = merge(a->r, b);
+        a->r = aux;
+        refresh(a);
+        return a;
     }
-};
+    else {
+        Node* aux = merge(a, b->l);
+        b->l = aux;
+        refresh(b);
+        return b;
+    }
+}
+
+bool find(Node* t, int k) {
+    if (t == null)
+        return false;
+    if (k < t->x)
+        return find(t->l, k);
+    if (k > t->x)
+        return find(t->r, k);
+    return true;
+}
+
+bool insert(Node* &t, int k) {
+    if (find(t, k))
+        return false;
+    Node *a, *b, *c, *d;
+    split(t, k, a, b);
+    c = new_node(k);
+    d = merge(a, c);
+    t = merge(d, b);
+    return true;
+}
+
+bool erase(Node* &t, int k) {
+    if (!find(t, k))
+        return false;
+    Node *a, *b, *c, *d;
+    split(t, k, a, b);
+    split(b, k+1, c, d);
+    t = merge(a, d);
+    return true;
+}
+
+// return the kth smallest value in 't'
+int kth_element(Node* t, int k) {
+    if (k <= t->l->cnt)
+        return kth_element(t->l, k);
+    else if (k == t->l->cnt + 1)
+        return t->x;
+    else
+        return kth_element(t->r, k - t->l->cnt - 1);
+}
+
+// return the number of elements in 't' smaller than 'k'
+int count(Node* t, int k) {
+    if (t == null)
+        return 0;
+    if (k <= t->x)
+        return count(t->l, k);
+    else
+        return 1 + t->l->cnt + count(t->r, k);
+}
 
 int main() {
     srand(time(NULL));
-    Treap tree;
+    init();
     int q;
     scanf("%d", &q);
     while (q--) {
-        char c;
+        char op;
         int x;
-        scanf(" %c %d", &c, &x);
-        if (c == 'I')
-            tree.insert(x);
-        else if (c == 'D')
-            tree.remove(x);
-        else if (c == 'C')
-            printf("%d\n", tree.count_lt(x));
+        scanf(" %c %d", &op, &x);
+        if (op == 'I')
+            insert(tree, x);
+        else if (op == 'D')
+            erase(tree, x);
+        else if (op == 'C')
+            printf("%d\n", count(tree, x));
         else {
-            int lo = -INF, hi = INF;
-            while (lo < hi) {
-                int mi = (lo + hi + 1) / 2;
-                int cnt = tree.count_lt(mi);
-                if (cnt < x)
-                    lo = mi;
-                else
-                    hi = mi - 1;
-            }
-            if (-INF < lo && lo < INF)
-                printf("%d\n", lo);
-            else
+            if (x > tree->cnt)
                 puts("invalid");
+            else
+                printf("%d\n", kth_element(tree, x));
         }
     }
 }
