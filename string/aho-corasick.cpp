@@ -5,81 +5,58 @@
 #include <cstdio>
 #include <cstring>
 #include <queue>
-#include <map>
 using namespace std;
-
-#define mp make_pair
-#define fi first
-#define se second
-
-typedef pair<int, int> pii;
 
 #define MAX 1000005
 
 struct Node {
-    map<char, int> adj;
-    int fail;
-    pii match;
-    int next;
+    int adj[26];
+    int end, fail;
 
     void init() {
-        adj.clear();
+        memset(adj, -1, sizeof(adj));
+        end = 0;
         fail = -1;
-        match = mp(-1, -1);
-        next = -1;
-    }
-
-    int getChild(const char &c) {
-        map<char, int>::iterator it = adj.find(c);
-        if (it != adj.end())
-            return it->second;
-        return -1;
     }
 };
 
-int qntNodes, qntPatts;
+int next_id;
 Node trie[MAX];
 
 void init() {
     trie[0].init();
-    qntNodes = 1;
-    qntPatts = 0;
+    next_id = 1;
 }
 
-void addWord(const char *word) {
-    int node = 0, aux = -1;
+void add_word(const char *word) {
+    int node = 0;
     for (int i = 0; word[i]; i++) {
-        aux = trie[node].getChild(word[i]);
+        int &aux = trie[node].adj[word[i]-'a'];
         if (aux == -1) {
-            trie[qntNodes].init();
-            aux = qntNodes++;
-            trie[node].adj[word[i]] = aux;
+            trie[next_id].init();
+            aux = next_id++;
         }
         node = aux;
     }
-    trie[node].match = mp(qntPatts++, strlen(word));
+    trie[node].end = 1;
 }
 
 void build() {
     queue<int> q;
-    map<char, int>::iterator it;
-
     trie[0].fail = -1;
     q.push(0);
     while (!q.empty()) {
         int u = q.front();
         q.pop();
-        for (it = trie[u].adj.begin(); it != trie[u].adj.end(); it++) {
-            int v = it->second;
-            char c = it->first;
+        for (int c = 0; c < 26; c++) {
+            if (trie[u].adj[c] == -1) continue;
+            int v = trie[u].adj[c];
             q.push(v);
-
             int f = trie[u].fail;
-            while (f >= 0 && trie[f].getChild(c) == -1)
+            while (f >= 0 && trie[f].adj[c] == -1)
                 f = trie[f].fail;
-            f = f >= 0 ? trie[f].getChild(c) : 0;
+            f = f >= 0 ? trie[f].adj[c] : 0;
             trie[v].fail = f;
-            trie[v].next = trie[f].match.fi >= 0 ? f : trie[f].next;
         }
     }
 }
@@ -87,31 +64,20 @@ void build() {
 void search(const char *text) {
     int node = 0;
     for (int i = 0; text[i]; i++) {
-        while (node >= 0 && trie[node].getChild(text[i]) == -1)
+        while (node >= 0 && trie[node].adj[text[i]-'a'] == -1)
             node = trie[node].fail;
-        node = node >= 0 ? trie[node].getChild(text[i]) : 0;
-
-        int aux = node;
-        while (aux >= 0) {
-            if (trie[aux].match.fi >= 0) {
-                // do something with the match
-                printf("patt: %d, pos: %d\n",
-                        trie[aux].match.fi,
-                        i - trie[aux].match.se + 1);
+        node = node >= 0 ? trie[node].adj[text[i]-'a'] : 0;
+        for (int f = node; f > 0; f = trie[f].fail) {
+            if (trie[f].end) {
+                // do something with a match ending at position i
             }
-            aux = trie[aux].next;
         }
     }
 }
 
 int main() {
     init();
-    addWord("take");
-    addWord("fast");
-    addWord("soft");
-    addWord("ake");
-    addWord("e");
+    add_word("dictionary");
     build();
-    puts("takeso fasofast fassofatake sosso sofastake so");
-    search("takeso fasofast fassofatake sosso sofastake so");
+    search("text");
 }
