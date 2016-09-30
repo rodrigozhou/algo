@@ -1,3 +1,9 @@
+/**
+ * Segment Tree
+ *
+ * Problems: SPOJ/HORRIBLE
+ */
+
 #include <cstdio>
 #include <cstring>
 using namespace std;
@@ -20,31 +26,32 @@ void propagate(int node, int lo, int hi) {
     lazy[node] = 0;
 }
 
-void update(int node, int lo, int hi, int i, int j, int val) {
-    if (i <= lo && hi <= j) {
+void update(int node, int lo, int hi, int a, int b, int val) {
+    if (a <= lo && hi <= b) {
         lazy[node] += val;
         return;
     }
+    propagate(node, lo, hi);
     int mid = (lo + hi)/2;
-    if (i <= mid)
-        update(left(node), lo, mid, i, j, val);
-    if (j > mid)
-        update(right(node), mid+1, hi, i, j, val);
+    if (a <= mid)
+        update(left(node), lo, mid, a, b, val);
+    if (b > mid)
+        update(right(node), mid+1, hi, a, b, val);
     propagate(left(node), lo, mid);
     propagate(right(node), mid+1, hi);
     tree[node] = tree[left(node)] + tree[right(node)];
 }
 
-ll query(int node, int lo, int hi, int i, int j) {
+ll query(int node, int lo, int hi, int a, int b) {
     propagate(node, lo, hi);
-    if (i <= lo && hi <= j)
+    if (a <= lo && hi <= b)
         return tree[node];
     ll ret = 0;
     int mid = (lo + hi)/2;
-    if (i <= mid)
-        ret = query(left(node), lo, mid, i, j);
-    if (j > mid)
-        ret += query(right(node), mid+1, hi, i, j);
+    if (a <= mid)
+        ret = query(left(node), lo, mid, a, b);
+    if (b > mid)
+        ret += query(right(node), mid+1, hi, a, b);
     return ret;
 }
 
@@ -57,15 +64,13 @@ int main() {
         memset(tree, 0, sizeof(tree));
         memset(lazy, 0, sizeof(lazy));
         while (c--) {
-            int op;
+            int op, p, q, v;
             scanf("%d", &op);
             if (op == 0) {
-                int p, q, v;
                 scanf("%d %d %d", &p, &q, &v);
                 update(1, 1, n, p, q, v);
             }
             else {
-                int p, q;
                 scanf("%d %d", &p, &q);
                 printf("%lld\n", query(1, 1, n, p, q));
             }
