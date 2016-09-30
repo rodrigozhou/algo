@@ -1,7 +1,7 @@
 /**
  * Manacher's Algorithm
  *
- * Compute the lengths of the polindromic substrings of a string
+ * Compute the lengths of all palindromic substrings of a string
  *
  * Complexity: O(n)
  */
